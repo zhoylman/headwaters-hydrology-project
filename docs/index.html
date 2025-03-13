@@ -4,19 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Headwaters Hydrology Project</title>
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
-  <!-- Leaflet JS (load first) -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <!-- FlatGeobuf UMD build (if needed) -->
   <script src="https://unpkg.com/flatgeobuf@3.20.0/dist/flatgeobuf-geojson.min.js"></script>
-  <!-- Chroma JS -->
   <script src="https://unpkg.com/chroma-js@2.0.3/chroma.min.js"></script>
   <style>
     /* Global styles */
@@ -87,13 +80,14 @@
       margin-bottom: 5px;
       font-weight: bold;
     }
-    /* Sidebar styling */
-    .sidebar {
+       /* Sidebar styling */
+       .sidebar {
       position: absolute;
       bottom: 50px;
       right: 50px;
-      width: calc(100% - 40px);
-      max-width: 500px;
+      width: 500px; /* Initial width */
+      height: 400px; /* Initial height */
+      /* max-width: 500px; */ /* Removed this */
       max-height: calc(100% - 40px);
       background: #fff;
       border: 1px solid #ccc;
@@ -102,6 +96,8 @@
       overflow-y: auto;
       z-index: 1100;
       display: none;
+      /* resize: both; */ /* Removed */
+      /* overflow: auto; */ /* Removed */
     }
     .sidebar-header {
       background: #f8f9fa;
@@ -124,6 +120,9 @@
     }
     #sidebar-content {
       padding: 10px;
+      /* Keep these lines for inner content resizing if needed */
+      /* resize: both; */
+      /* overflow: auto; */
     }
     #sidebar-content img {
       width: 100%;
@@ -177,18 +176,28 @@
       font-size: 16px;
       font-weight: bold;
     }
+    .sidebar-resizer {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 15px;
+  height: 15px;
+  background: lightgray;
+  border: 1px solid #ccc;
+  cursor: se-resize;
+  border-radius: 3px;
+}
   </style>
 </head>
 <body>
 
-<!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
   <a class="navbar-brand" href="#">Headwaters Hydrology Project</a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent"
           aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
-  
+
   <div class="collapse navbar-collapse" id="navbarContent">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item dropdown">
@@ -211,41 +220,33 @@
       </li>
     </ul>
 
-    <!-- Dismissible Message Box -->
     <div id="navbar-message" style="background: rgba(255, 255, 150, 0.9); padding: 8px 12px; border-radius: 4px; font-size: 14px; font-weight: bold; border: 2px solid #ccc; display: flex; align-items: center; gap: 10px; margin-right: 15px;">
       <span>Click on a watershed for current flow graphics.</span>
       <button id="close-navbar-message" style="background: none; border: none; font-size: 16px; font-weight: bold; cursor: pointer; color: black;">&times;</button>
     </div>
 
-    <!-- Clickable MCO Logo (Top Right) -->
     <a href="https://climate.umt.edu/" target="_blank" style="display: flex; align-items: center;">
-      <img src="https://data.climate.umt.edu/website/assets/MCO_logo.png" alt="Montana Climate Office Logo" 
+      <img src="https://data.climate.umt.edu/website/assets/MCO_logo.png" alt="Montana Climate Office Logo"
            style="height: 40px; width: auto; border: 2px solid white; border-radius: 6px; padding: 2px; cursor: pointer;">
     </a>
   </div>
 </nav>
 
-<!-- JavaScript to Dismiss Message -->
 <script>
   document.getElementById('close-navbar-message').addEventListener('click', function() {
     document.getElementById('navbar-message').style.display = 'none';
   });
 </script>
 
-<!-- Map Container -->
 <div id="map">
-  <!-- Floating Title -->
   <div id="floating-title"></div>
-  
- <!-- Information Button -->
-<button id="info-btn" class="btn" style="position: absolute; top: 10px; right: 55px; z-index: 1000; cursor: pointer; padding: 5px; border-radius: 4px; background-color: white; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);">
+
+ <button id="info-btn" class="btn" style="position: absolute; top: 10px; right: 55px; z-index: 1000; cursor: pointer; padding: 5px; border-radius: 4px; background-color: white; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);">
   <i class="fa fa-info-circle" style="color: black;"></i>
 </button>
 
-<!-- Information Popup -->
 <div id="info-popup" style="position: absolute; top: 50px; right: 55px; z-index: 1000; background: white; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); display: none; width: 400px;">
 
-  <!-- Inner scrollable container -->
   <div id="info-popup-content" style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
     <center>
       <p style="font-size: 15px; text-align: center; font-weight: bold;">
@@ -275,7 +276,6 @@
   </div>
 </div>
 
-<!-- JavaScript Fix for Scroll Issue -->
 <script>
   document.getElementById('info-popup-content').addEventListener('wheel', function(event) {
     event.stopPropagation();  // Prevents Leaflet from capturing scroll
@@ -286,7 +286,6 @@
   });
 </script>
 
-<!-- JavaScript to Close Popup Only When Clicking on the Map -->
 <script>
   document.addEventListener("DOMContentLoaded", function() {
     var popup = document.getElementById("info-popup");
@@ -321,8 +320,7 @@
     });
   });
 </script>
-  
-  <!-- Legend -->
+
   <div id="legend">
     <div id="legend-title">Percentiles</div>
     <div><div id="legend-color-box" style="background: #730000;"></div> 0-2%</div>
@@ -337,30 +335,26 @@
     <div><div id="legend-color-box" style="background: #4030E3;"></div> 95-98%</div>
     <div><div id="legend-color-box" style="background: #303B83;"></div> 98-100%</div>
   </div>
-  
-  <!-- Slider Container -->
+
   <div id="slider-container">
     <label for="opacity-slider">Fill Transparency</label>
     <input type="range" id="opacity-slider" min="0" max="1" step="0.05" value="0.8">
   </div>
 </div>
 
-<!-- Loading Spinner -->
 <div id="loading-spinner">
   <img src="https://climate.umt.edu/assets/images/MCO_logo_icon_only.png" alt="MCO Logo" class="loading-logo">
   <div id="loading-message">Streamflow Data Loading</div>
 </div>
 
-<!-- Sidebar for Plots -->
 <div id="sidebar" class="sidebar">
   <div class="sidebar-header">
     <h5 id="sidebar-title">Plot Details</h5>
     <button id="sidebar-close" class="close">&times;</button>
   </div>
   <div id="sidebar-content"></div>
-</div>
+  <div class="sidebar-resizer"></div> </div>
 
-<!-- Footer -->
 <footer class="bg-dark text-light text-center py-3" style="position: relative; bottom: 0; width: 100%; margin-top: 20px; font-size: 14px;">
   <p class="mb-1">Produced by the Montana Climate Office</p>
   <p class="mb-1">Montana Forest & Conservation Experiment Station</p>
@@ -426,33 +420,33 @@ document.getElementById('close-message').addEventListener('click', function() {
   // Global layer variables
   let geoJsonLayer, statesLayer;
   let geojsonLoaded = false, baseMapLoaded = false;
-  
+
   // Initialize the map
-  var map = L.map('map', { 
-    zoomSnap: 0.5, 
-    zoomDelta: 0.5, 
-    zoomControl: false 
+  var map = L.map('map', {
+    zoomSnap: 0.5,
+    zoomDelta: 0.5,
+    zoomControl: false
   }).setView([39.8283, -98.5795], 5);
-  
+
   L.control.zoom({ position: 'topright' }).addTo(map);
-  
+
   // Set tooltip pane's z-index so tooltips appear above states layer
   map.getPanes().tooltipPane.style.zIndex = 700;
-  
+
   // Load base layer (ESRI NatGeo, greyscale)
   var tileLayer = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', {
     className: 'toGrey',
     maxZoom: 19
   }).addTo(map);
   map.attributionControl.addAttribution('<a href="https://www.esri.com/" target="_blank">Tiles &copy; ESRI</a>');
-  
+
   tileLayer.on('load', function() {
     baseMapLoaded = true;
     if (baseMapLoaded && geojsonLoaded) {
       document.getElementById("loading-spinner").style.display = "none";
     }
   });
-  
+
   // Define color scale and current opacity for basin layer
   var breaks = [0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.7, 0.8, 0.9, 0.95, 0.98, 1];
   var scale = chroma.scale([
@@ -460,7 +454,7 @@ document.getElementById('close-message').addEventListener('click', function() {
     "#82FCF9", "#32E1FA", "#325CFE", "#4030E3", "#303B83"
   ]).classes(breaks);
   var currentOpacity = 0.8;
-  
+
   function style(feature) {
     var value = feature.properties.ft3_s_ecdf;
     return {
@@ -471,7 +465,7 @@ document.getElementById('close-message').addEventListener('click', function() {
       fillOpacity: currentOpacity
     };
   }
-  
+
   function onEachFeature(feature, layer) {
     if (feature.properties && feature.properties.basin_id) {
       layer.on('click', function() {
@@ -490,7 +484,7 @@ document.getElementById('close-message').addEventListener('click', function() {
       layer.on('mouseout', function() { this.closeTooltip(); });
     }
   }
-  
+
   function showSidebar(basin_id) {
     var sidebar = document.getElementById('sidebar');
     var content = document.getElementById('sidebar-content');
@@ -499,11 +493,11 @@ document.getElementById('close-message').addEventListener('click', function() {
     content.innerHTML = `<img src="https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png" alt="Current Climatology Plot">`;
     sidebar.style.display = 'block';
   }
-  
+
   document.getElementById('sidebar-close').addEventListener('click', function() {
     document.getElementById('sidebar').style.display = 'none';
   });
-  
+
   // Load basin GeoJSON layer
   fetch('https://data.climate.umt.edu/share/current_flow_percentile.geojson')
     .then(response => response.json())
@@ -518,11 +512,11 @@ document.getElementById('close-message').addEventListener('click', function() {
       }
     })
     .catch(err => console.error('Error loading GeoJSON:', err));
-  
+
   // Create a dedicated pane for the states layer
   map.createPane('statesPane');
   map.getPane('statesPane').style.zIndex = 650;
-  
+
   // Load states GeoJSON layer (non-interactive, always on top)
   fetch('https://data.climate.umt.edu/share/states.geojson')
     .then(response => response.json())
@@ -542,7 +536,7 @@ document.getElementById('close-message').addEventListener('click', function() {
       console.log('States layer loaded successfully.');
     })
     .catch(error => console.error('Error loading states GeoJSON:', error));
-  
+
   // Fetch time text to update floating title and document title
   fetch('https://data.climate.umt.edu/share/current_flow_percentile_time.txt')
     .then(response => response.text())
@@ -554,13 +548,13 @@ document.getElementById('close-message').addEventListener('click', function() {
       }
     })
     .catch(error => console.error('Error fetching time text:', error));
-  
+
   // Set up slider container: disable propagation
   const sliderContainer = document.getElementById('slider-container');
   const opacitySlider = document.getElementById('opacity-slider');
   L.DomEvent.disableClickPropagation(sliderContainer);
   L.DomEvent.disableScrollPropagation(sliderContainer);
-  
+
   // Disable map dragging while interacting with the slider using pointer events.
   opacitySlider.addEventListener('pointerdown', function(e) {
     map.dragging.disable();
@@ -569,7 +563,7 @@ document.getElementById('close-message').addEventListener('click', function() {
   opacitySlider.addEventListener('pointerup', function(e) {
     map.dragging.enable();
   });
-  
+
   // Single input event listener to update both layers' opacity.
   opacitySlider.addEventListener('input', function(e) {
     let val = parseFloat(this.value);
@@ -584,7 +578,7 @@ document.getElementById('close-message').addEventListener('click', function() {
       });
     }
   });
-  
+
   // Manage tooltips during map dragging.
   map.on('dragstart', function() {
     if (geoJsonLayer) {
@@ -602,11 +596,11 @@ document.getElementById('close-message').addEventListener('click', function() {
         layer.on('mouseout', function() { this.closeTooltip(); });
       });
     }
-  
+
     // Ensure map dragging is enabled after dragend.
     map.dragging.enable();
   });
-  
+
   // Information button: prevent map drag events on info elements.
   const infoBtn = document.getElementById('info-btn');
   const infoPopup = document.getElementById('info-popup');
@@ -618,10 +612,131 @@ document.getElementById('close-message').addEventListener('click', function() {
   });
 </script>
 
-<!-- Bootstrap JS, Popper, and jQuery -->
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+  // Make the sidebar draggable using its header as the handle.
+  (function() {
+    var sidebar = document.getElementById('sidebar');
+    var header = sidebar.querySelector('.sidebar-header');
+    var isDragging = false;
+    var offset = { x: 0, y: 0 };
 
+    // Change the cursor to indicate draggable functionality.
+    header.style.cursor = 'move';
+
+    header.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      // Calculate the distance between the mouse click and the sidebar's top-left corner.
+      var rect = sidebar.getBoundingClientRect();
+      offset.x = e.clientX - rect.left;
+      offset.y = e.clientY - rect.top;
+      // Remove the bottom/right positioning so we can use top/left instead.
+      sidebar.style.bottom = 'auto';
+      sidebar.style.right = 'auto';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (isDragging) {
+        // Set the new position of the sidebar.
+        sidebar.style.left = (e.clientX - offset.x) + 'px';
+        sidebar.style.top = (e.clientY - offset.y) + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', function() {
+      isDragging = false;
+    });
+
+    // Optional: Handle touch events for mobile devices.
+    header.addEventListener('touchstart', function(e) {
+      isDragging = true;
+      var touch = e.touches[0];
+      var rect = sidebar.getBoundingClientRect();
+      offset.x = touch.clientX - rect.left;
+      offset.y = touch.clientY - rect.top;
+      sidebar.style.bottom = 'auto';
+      sidebar.style.right = 'auto';
+    });
+
+    document.addEventListener('touchmove', function(e) {
+      if (isDragging) {
+        var touch = e.touches[0];
+        sidebar.style.left = (touch.clientX - offset.x) + 'px';
+        sidebar.style.top = (touch.clientY - offset.y) + 'px';
+      }
+    });
+
+    document.addEventListener('touchend', function() {
+      isDragging = false;
+    });
+  })();
+</script>
+<script>
+  (function() {
+    const sidebar = document.getElementById('sidebar');
+    const resizer = sidebar.querySelector('.sidebar-resizer');
+    let isResizing = false;
+    let startX, startY, initialWidth, initialHeight, aspectRatio;
+
+    resizer.addEventListener('mousedown', function(e) {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialWidth = sidebar.offsetWidth;
+      initialHeight = sidebar.offsetHeight;
+      aspectRatio = initialWidth / initialHeight;
+      document.addEventListener('mousemove', resizeSidebar);
+      document.addEventListener('mouseup', stopResize);
+      document.body.style.cursor = 'se-resize'; // Change cursor during resize
+    });
+
+    function resizeSidebar(e) {
+      if (!isResizing) return;
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      let newWidth = initialWidth + deltaX;
+      let newHeight = initialHeight + deltaY;
+
+      // Maintain aspect ratio
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        newHeight = newWidth / aspectRatio;
+      } else {
+        newWidth = newHeight * aspectRatio;
+      }
+
+      // Calculate maximum size (50% of viewport)
+      const maxWidth = 0.7 * window.innerWidth;
+      const maxHeight = 0.7 * window.innerHeight;
+
+      // Apply minimum size (400px)
+      newWidth = Math.max(newWidth, 400);
+      newHeight = Math.max(newHeight, 400);
+
+      // Apply maximum size constraint
+      if (newWidth > maxWidth) {
+        newWidth = maxWidth;
+        newHeight = maxWidth / aspectRatio;
+      }
+      if (newHeight > maxHeight) {
+        newHeight = maxHeight;
+        newWidth = maxHeight * aspectRatio;
+      }
+
+      sidebar.style.width = `${newWidth}px`;
+      sidebar.style.height = `${newHeight}px`;
+    }
+
+    function stopResize() {
+      isResizing = false;
+      document.removeEventListener('mousemove', resizeSidebar);
+      document.removeEventListener('mouseup', stopResize);
+      document.body.style.cursor = 'default'; // Reset cursor
+    }
+  })();
+</script>
 </body>
 </html>
