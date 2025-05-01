@@ -227,7 +227,7 @@
 
     <a href="https://climate.umt.edu/" target="_blank" style="display: flex; align-items: center;">
       <img src="https://data.climate.umt.edu/website/assets/MCO_logo.png" alt="Montana Climate Office Logo"
-           style="height: 40px; width: auto; border: 2px solid white; border-radius: 6px; padding: 2px; cursor: pointer;">
+           style="height: 50px; width: auto; border: 2px solid white; border-radius: 6px; padding: 2px; cursor: pointer;">
     </a>
   </div>
 </nav>
@@ -486,13 +486,31 @@ document.getElementById('close-message').addEventListener('click', function() {
   }
 
   function showSidebar(basin_id) {
-    var sidebar = document.getElementById('sidebar');
-    var content = document.getElementById('sidebar-content');
-    var title = document.getElementById('sidebar-title');
-    title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
-    content.innerHTML = `<img src="https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png" alt="Current Climatology Plot">`;
+  const sidebar = document.getElementById('sidebar');
+  const content = document.getElementById('sidebar-content');
+  const title = document.getElementById('sidebar-title');
+
+  console.log(`Clicked basin: ${basin_id}`);
+
+  // Reset sidebar visibility in case it was hidden
+  if (sidebar.style.display === 'none' || sidebar.style.display === '') {
     sidebar.style.display = 'block';
   }
+
+  // Clear content each time to force fresh rendering
+  content.innerHTML = '';
+
+  // Update title and append image
+  title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
+
+  const img = document.createElement('img');
+  img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
+  img.alt = 'Current Climatology Plot';
+  img.style.width = '100%';
+  img.style.height = 'auto';
+
+  content.appendChild(img);
+}
 
   document.getElementById('sidebar-close').addEventListener('click', function() {
     document.getElementById('sidebar').style.display = 'none';
