@@ -187,6 +187,29 @@
   cursor: se-resize;
   border-radius: 3px;
 }
+/* Prevent text selection while resizing */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -moz-user-select: none;
+}
+
+#sidebar-content img {
+  max-width: 100%;
+  max-height: calc(100% - 40px); /* Adjust for header */
+  object-fit: contain;
+  display: block;
+}
+
+#sidebar-content {
+  padding: 10px;
+  height: calc(100% - 45px); /* Leave space for header */
+  overflow: hidden;          /* Prevent scrollbars if image exceeds bounds */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
   </style>
 </head>
 <body>
@@ -466,6 +489,29 @@ document.getElementById('close-message').addEventListener('click', function() {
     };
   }
 
+  function showSidebar(basin_id) {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('sidebar-content');
+    const title = document.getElementById('sidebar-title');
+
+    console.log(`Clicked basin: ${basin_id}`);
+
+    // ✅ ALWAYS show the sidebar
+    sidebar.style.display = 'block';
+
+    // ✅ Clear and reload content
+    content.innerHTML = '';
+    title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
+
+    const img = document.createElement('img');
+    img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
+    img.alt = 'Current Climatology Plot';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+
+    content.appendChild(img);
+  }
+
   function onEachFeature(feature, layer) {
     if (feature.properties && feature.properties.basin_id) {
       layer.on('click', function() {
@@ -484,33 +530,6 @@ document.getElementById('close-message').addEventListener('click', function() {
       layer.on('mouseout', function() { this.closeTooltip(); });
     }
   }
-
-  function showSidebar(basin_id) {
-  const sidebar = document.getElementById('sidebar');
-  const content = document.getElementById('sidebar-content');
-  const title = document.getElementById('sidebar-title');
-
-  console.log(`Clicked basin: ${basin_id}`);
-
-  // Reset sidebar visibility in case it was hidden
-  if (sidebar.style.display === 'none' || sidebar.style.display === '') {
-    sidebar.style.display = 'block';
-  }
-
-  // Clear content each time to force fresh rendering
-  content.innerHTML = '';
-
-  // Update title and append image
-  title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
-
-  const img = document.createElement('img');
-  img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
-  img.alt = 'Current Climatology Plot';
-  img.style.width = '100%';
-  img.style.height = 'auto';
-
-  content.appendChild(img);
-}
 
   document.getElementById('sidebar-close').addEventListener('click', function() {
     document.getElementById('sidebar').style.display = 'none';
@@ -693,68 +712,59 @@ document.getElementById('close-message').addEventListener('click', function() {
 </script>
 <script>
   (function() {
-    const sidebar = document.getElementById('sidebar');
-    const resizer = sidebar.querySelector('.sidebar-resizer');
-    let isResizing = false;
-    let startX, startY, initialWidth, initialHeight, aspectRatio;
+  const sidebar = document.getElementById('sidebar');
+  const resizer = sidebar.querySelector('.sidebar-resizer');
+  let isResizing = false;
+  let startX, startY, initialWidth, initialHeight, aspectRatio;
 
-    resizer.addEventListener('mousedown', function(e) {
-      isResizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      initialWidth = sidebar.offsetWidth;
-      initialHeight = sidebar.offsetHeight;
-      aspectRatio = initialWidth / initialHeight;
-      document.addEventListener('mousemove', resizeSidebar);
-      document.addEventListener('mouseup', stopResize);
-      document.body.style.cursor = 'se-resize'; // Change cursor during resize
-    });
+  resizer.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    initialWidth = sidebar.offsetWidth;
+    initialHeight = sidebar.offsetHeight;
+    aspectRatio = initialWidth / initialHeight;
 
-    function resizeSidebar(e) {
-      if (!isResizing) return;
+    // 👇 Disable text selection during resize
+    document.body.classList.add('no-select');
+    document.addEventListener('mousemove', resizeSidebar);
+    document.addEventListener('mouseup', stopResize);
+    document.body.style.cursor = 'se-resize';
+  });
 
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
+  function resizeSidebar(e) {
+    if (!isResizing) return;
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
 
-      let newWidth = initialWidth + deltaX;
-      let newHeight = initialHeight + deltaY;
+    let newWidth = initialWidth + deltaX;
+    let newHeight = initialHeight + deltaY;
 
-      // Maintain aspect ratio
-      if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        newHeight = newWidth / aspectRatio;
-      } else {
-        newWidth = newHeight * aspectRatio;
-      }
-
-      // Calculate maximum size (50% of viewport)
-      const maxWidth = 0.7 * window.innerWidth;
-      const maxHeight = 0.7 * window.innerHeight;
-
-      // Apply minimum size (400px)
-      newWidth = Math.max(newWidth, 400);
-      newHeight = Math.max(newHeight, 400);
-
-      // Apply maximum size constraint
-      if (newWidth > maxWidth) {
-        newWidth = maxWidth;
-        newHeight = maxWidth / aspectRatio;
-      }
-      if (newHeight > maxHeight) {
-        newHeight = maxHeight;
-        newWidth = maxHeight * aspectRatio;
-      }
-
-      sidebar.style.width = `${newWidth}px`;
-      sidebar.style.height = `${newHeight}px`;
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      newHeight = newWidth / aspectRatio;
+    } else {
+      newWidth = newHeight * aspectRatio;
     }
 
-    function stopResize() {
-      isResizing = false;
-      document.removeEventListener('mousemove', resizeSidebar);
-      document.removeEventListener('mouseup', stopResize);
-      document.body.style.cursor = 'default'; // Reset cursor
-    }
-  })();
+    const maxWidth = 0.7 * window.innerWidth;
+    const maxHeight = 0.7 * window.innerHeight;
+    newWidth = Math.min(Math.max(newWidth, 400), maxWidth);
+    newHeight = Math.min(Math.max(newHeight, 400), maxHeight);
+
+    sidebar.style.width = `${newWidth}px`;
+    sidebar.style.height = `${newHeight}px`;
+  }
+
+  function stopResize() {
+    isResizing = false;
+    document.removeEventListener('mousemove', resizeSidebar);
+    document.removeEventListener('mouseup', stopResize);
+
+    // 👇 Re-enable text selection
+    document.body.classList.remove('no-select');
+    document.body.style.cursor = 'default';
+  }
+})();;
 </script>
 </body>
 </html>
