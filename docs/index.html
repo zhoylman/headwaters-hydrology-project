@@ -210,6 +210,73 @@
   align-items: center;
   justify-content: center;
 }
+
+@media (max-width: 768px) {
+  #map {
+    width: 100%;
+    margin: 60px auto 10px auto;
+    height: calc(100vh - 70px);
+    border: none;
+  }
+
+  .sidebar {
+    width: 95vw !important;
+    height: 60vh !important;
+    right: 2.5vw;
+    bottom: 10px;
+    border-radius: 8px;
+  }
+
+  .sidebar-header h5 {
+    font-size: 14px;
+  }
+
+  #sidebar-content {
+    padding: 5px;
+    height: calc(100% - 40px);
+  }
+
+  .sidebar-resizer {
+    display: none; /* disable resizing on mobile */
+  }
+
+  #navbar-message {
+    font-size: 12px;
+    padding: 6px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .navbar-brand {
+    font-size: 16px;
+  }
+
+  #legend, #slider-container {
+    font-size: 10px;
+    padding: 6px;
+  }
+
+  #info-popup {
+    width: 90vw;
+    right: 5vw;
+    font-size: 14px;
+  }
+
+  #info-popup-content {
+    max-height: 60vh;
+  }
+
+  #floating-title {
+    font-size: 14px;
+    padding: 6px;
+    max-width: 90%;
+    word-wrap: break-word;
+  }
+
+  .navbar-collapse {
+    background-color: #343a40; /* ensure dropdowns are visible */
+  }
+}
   </style>
 </head>
 <body>
