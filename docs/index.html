@@ -500,28 +500,32 @@ document.getElementById('close-message').addEventListener('click', function() {
     };
   }
 
-  function showSidebar(basin_id) {
-    const sidebar = document.getElementById('sidebar');
-    const content = document.getElementById('sidebar-content');
-    const title = document.getElementById('sidebar-title');
+function showSidebar(basin_id) {
+  const sidebar = document.getElementById('sidebar');
+  const content = document.getElementById('sidebar-content');
+  const title = document.getElementById('sidebar-title');
 
-    console.log(`Clicked basin: ${basin_id}`);
+  console.log(`Clicked basin: ${basin_id}`);
 
-    // ✅ ALWAYS show the sidebar
-    sidebar.style.display = 'block';
+  // ✅ Reset positioning to top-right corner if previously moved or closed
+  sidebar.style.display = 'block';
+  sidebar.style.left = '';
+  sidebar.style.top = '';
+  sidebar.style.right = '50px';
+  sidebar.style.bottom = '50px';
 
-    // ✅ Clear and reload content
-    content.innerHTML = '';
-    title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
+  // ✅ Clear and reload content
+  content.innerHTML = '';
+  title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
 
-    const img = document.createElement('img');
-    img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
-    img.alt = 'Current Climatology Plot';
-    img.style.width = '100%';
-    img.style.height = 'auto';
+  const img = document.createElement('img');
+  img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
+  img.alt = 'Current Climatology Plot';
+  img.style.width = '100%';
+  img.style.height = 'auto';
 
-    content.appendChild(img);
-  }
+  content.appendChild(img);
+}
 
   function onEachFeature(feature, layer) {
     if (feature.properties && feature.properties.basin_id) {
