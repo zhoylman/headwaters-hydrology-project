@@ -543,12 +543,23 @@ function showSidebar(basin_id) {
       });
     }
     if (feature.properties && feature.properties.basin_name && typeof feature.properties.ft3_s_ecdf === 'number') {
-      var percent = Math.round(feature.properties.ft3_s_ecdf * 100);
-      var suffix = (percent % 100 >= 11 && percent % 100 <= 13) ? 'th' :
-                   (percent % 10 === 1) ? 'st' :
-                   (percent % 10 === 2) ? 'nd' :
-                   (percent % 10 === 3) ? 'rd' : 'th';
-      var tooltipContent = `${feature.properties.basin_name}: ${percent}${suffix} percentile`;
+      const name = feature.properties.basin_name;
+      const v = feature.properties.ft3_s_ecdf;   // 0..1
+      let tooltipContent;
+
+      if (v <= 0) {
+        tooltipContent = `${name}: Daily 30-year Minimum`;
+      } else if (v >= 1) {
+        tooltipContent = `${name}: Daily 30-year Maximum`;
+      } else {
+        const percent = Math.round(v * 100);
+        const suffix = (percent % 100 >= 11 && percent % 100 <= 13) ? 'th' :
+                      (percent % 10 === 1) ? 'st' :
+                      (percent % 10 === 2) ? 'nd' :
+                      (percent % 10 === 3) ? 'rd' : 'th';
+        tooltipContent = `${name}: ${percent}${suffix} percentile`;
+      }
+
       layer.bindTooltip(tooltipContent, { direction: 'auto', sticky: false });
       layer.on('mouseover', function() { this.openTooltip(); });
       layer.on('mouseout', function() { this.closeTooltip(); });

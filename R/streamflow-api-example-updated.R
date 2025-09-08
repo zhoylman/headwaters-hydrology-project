@@ -71,6 +71,19 @@ request = httr::GET(
   )
 )
 
+request = httr::GET(
+  # can replace this with /predictions/raw, the only query parameter that isn't shared is aggregations.
+  "https://data.climate.umt.edu/streamflow-api/predictions/",
+  query = list(
+    date_start="1982-01-01",
+    date_end="2025-07-01",
+    aggregations="mean", #These are all the options. If you don't specify, median is the default.
+    as_csv=TRUE,
+    locations = '1701021305',
+    units="cfs" # cfs is the default. Can also do mm.
+  )
+)
+
 data = httr::content(request)
 print(data)
 
@@ -197,8 +210,8 @@ generate_streamflow_plot(
   site_id = data$location[1],
   climatology_start_date = '1991-01-01',
   climatology_end_date = '2020-12-31',
-  plot_start_date = '2025-01-01',
-  plot_end_date = '2025-12-31'
+  plot_start_date = '2022-01-01',
+  plot_end_date = '2022-12-31'
   )
 
 #2 year example 
