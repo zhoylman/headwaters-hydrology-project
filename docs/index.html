@@ -381,7 +381,7 @@
 
   <div id="slider-container">
     <label for="opacity-slider">Fill Transparency</label>
-    <input type="range" id="opacity-slider" min="0" max="1" step="0.05" value="0.8">
+    <input type="range" id="opacity-slider" min="0" max="1" step="0.05" value="0.9">
   </div>
 </div>
 
@@ -469,7 +469,7 @@ document.getElementById('close-message').addEventListener('click', function() {
     zoomSnap: 0.5,
     zoomDelta: 0.5,
     zoomControl: false
-  }).setView([39.8283, -98.5795], 5);
+  }).setView([39.110232, -98.5795], 4.5);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -502,7 +502,7 @@ document.getElementById('close-message').addEventListener('click', function() {
     var value = feature.properties.ft3_s_ecdf;
     return {
       fillColor: scale(value).hex(),
-      weight: 0.5,
+      weight: 0.25,
       opacity: 0.5,
       color: 'black',
       fillOpacity: currentOpacity
