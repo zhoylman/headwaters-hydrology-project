@@ -465,13 +465,28 @@ document.getElementById('close-message').addEventListener('click', function() {
   let geojsonLoaded = false, baseMapLoaded = false;
 
   // Initialize the map
-  var map = L.map('map', {
-    zoomSnap: 0.5,
-    zoomDelta: 0.5,
-    zoomControl: false
-  }).setView([39.110232, -98.5795], 4.5);
+var map = L.map('map', {
+  zoomSnap: 0.5,
+  zoomDelta: 0.5,
+  zoomControl: false
+});
 
-  L.control.zoom({ position: 'topright' }).addTo(map);
+// Approximate bounding box for CONUS (Southwest to Northeast corners)
+var conusBounds = L.latLngBounds(
+  [24.396308, -125.0],  // Southwest (southern tip of Florida Keys)
+  [49.384358, -66.93457] // Northeast (northern tip of Maine)
+);
+
+// Choose padding and zoom limits based on viewport size
+var isMobile = window.innerWidth < 768;
+
+map.fitBounds(conusBounds, {
+  padding: isMobile ? [10, 10] : [30, 30],
+  maxZoom: isMobile ? 5 : 6,
+  animate: false   // no animation on initial load
+});
+
+L.control.zoom({ position: 'topright' }).addTo(map);
 
   // Set tooltip pane's z-index so tooltips appear above states layer
   map.getPanes().tooltipPane.style.zIndex = 700;
