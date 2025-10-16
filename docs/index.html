@@ -220,6 +220,76 @@
   justify-content: center;
 }
 
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  /* Map: use dynamic viewport height and remove big margins */
+  #map {
+    width: 100%;
+    margin: 56px 0 0 0;                 /* ~navbar height */
+    height: calc(100dvh - 56px);        /* use dynamic viewport units on mobile */
+    border-width: 1px;
+  }
+
+  /* Sidebar becomes a bottom sheet */
+  .sidebar {
+    right: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100vw !important;
+    height: 45vh !important;
+    border-radius: 12px 12px 0 0;
+  }
+  .sidebar-header h5 { font-size: 14px; }
+  #sidebar-content { padding: 8px; }
+
+  /* Disable drag/resize affordances on small screens (too fiddly) */
+  .sidebar-resizer { display: none; }
+  .sidebar .sidebar-header { cursor: default !important; }
+
+  /* Info popup: narrower and shorter */
+  #info-popup {
+    right: 8px !important;
+    top: 56px !important;
+    width: 86vw !important;
+    max-height: 50vh !important;
+    overflow: auto;
+  }
+  #info-popup-content {
+    max-height: 45vh !important;
+  }
+
+  /* Legend & slider: corners, bigger touch targets */
+  #legend {
+    left: 8px !important;
+    bottom: 8px !important;
+    font-size: 12px;
+    padding: 8px;
+  }
+  #legend #legend-color-box {
+    width: 14px; height: 14px;
+  }
+  #slider-container {
+    left: auto !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  /* Floating title: smaller */
+  #floating-title {
+    top: 60px;
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+
+  /* Navbar message: shrink or hide if needed */
+  #navbar-message {
+    display: none; /* comment this out if you want to keep it */
+  }
+}
+
 
   </style>
 </head>
@@ -528,25 +598,33 @@ function showSidebar(basin_id) {
   const sidebar = document.getElementById('sidebar');
   const content = document.getElementById('sidebar-content');
   const title = document.getElementById('sidebar-title');
+  const isMobile = window.innerWidth < 768;
 
-  console.log(`Clicked basin: ${basin_id}`);
-
-  // ✅ Reset positioning to top-right corner if previously moved or closed
   sidebar.style.display = 'block';
-  sidebar.style.left = '';
-  sidebar.style.top = '';
-  sidebar.style.right = '50px';
-  sidebar.style.bottom = '50px';
 
-  // ✅ Clear and reload content
+  if (isMobile) {
+    // bottom sheet – CSS media query handles size/position
+    sidebar.style.left = '';
+    sidebar.style.top = '';
+    sidebar.style.right = '0';
+    sidebar.style.bottom = '0';
+  } else {
+    // desktop – keep your original corner placement
+    sidebar.style.left = '';
+    sidebar.style.top = '';
+    sidebar.style.right = '50px';
+    sidebar.style.bottom = '50px';
+  }
+
   content.innerHTML = '';
-  title.innerHTML = 'Basin ID (HUC10): ' + basin_id;
+  title.textContent = 'Basin ID (HUC10): ' + basin_id;
 
   const img = document.createElement('img');
   img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
   img.alt = 'Current Climatology Plot';
   img.style.width = '100%';
   img.style.height = 'auto';
+  img.style.maxWidth = '100%';
 
   content.appendChild(img);
 }
@@ -842,7 +920,22 @@ fetch('https://data.climate.umt.edu/share/current_flow_percentile.geojson')
     document.body.classList.remove('no-select');
     document.body.style.cursor = 'default';
   }
-})();;
+  window.addEventListener('resize', () => {
+  map.invalidateSize();
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => map.invalidateSize(), 250);
+});
+document.getElementById('info-popup').addEventListener('touchmove', function(e) {
+  e.stopPropagation();
+}, { passive: true });
+var isMobile = window.innerWidth < 768;
+map.fitBounds(conusBounds, {
+  padding: isMobile ? [8, 8] : [30, 30],
+  maxZoom: isMobile ? 5 : 6,
+  animate: false
+});
+})();
 </script>
 </body>
 </html>
