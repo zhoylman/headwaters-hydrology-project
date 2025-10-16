@@ -585,20 +585,48 @@ function showSidebar(basin_id) {
     document.getElementById('sidebar').style.display = 'none';
   });
 
-  // Load basin GeoJSON layer
-  fetch('https://data.climate.umt.edu/share/current_flow_percentile.geojson')
-    .then(response => response.json())
-    .then(data => {
-      geoJsonLayer = L.geoJson(data, {
-        style: style,
-        onEachFeature: onEachFeature
-      }).addTo(map);
-      geojsonLoaded = true;
-      if (baseMapLoaded && geojsonLoaded) {
-        document.getElementById("loading-spinner").style.display = "none";
-      }
-    })
-    .catch(err => console.error('Error loading GeoJSON:', err));
+// Put this ABOVE the fetch()
+const excludedBasins = [
+  "Great Salt Lake",
+  "Pyramid Lake",
+  "Walker Lake",
+  "Mono Lake",
+  "Carson Sink",
+  "Humboldt Sink",
+  "Summer Lake",
+  "Abert Lake",
+  "Goose Lake",
+  "Devils Lake",
+  "Medicine Lake",
+  "Great Divide Basin"
+];
+
+// Load basin GeoJSON layer
+fetch('https://data.climate.umt.edu/share/current_flow_percentile.geojson')
+  .then(response => response.json())
+  .then(data => {
+    // Exclude primarily-lake/closed basins by name (case-insensitive substring match)
+    const filteredFeatures = data.features.filter(feature => {
+      const name = feature.properties?.basin_name?.trim();
+      return !excludedBasins.includes(name);
+    });
+
+    const filteredGeoJSON = {
+      type: "FeatureCollection",
+      features: filteredFeatures
+    };
+
+    geoJsonLayer = L.geoJson(filteredGeoJSON, {
+      style: style,
+      onEachFeature: onEachFeature
+    }).addTo(map);
+
+    geojsonLoaded = true;
+    if (baseMapLoaded && geojsonLoaded) {
+      document.getElementById("loading-spinner").style.display = "none";
+    }
+  })
+  .catch(err => console.error('Error loading GeoJSON:', err));
 
   // Create a dedicated pane for the states layer
   map.createPane('statesPane');
