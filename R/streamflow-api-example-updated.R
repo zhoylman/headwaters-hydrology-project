@@ -75,8 +75,8 @@ request = httr::GET(
   # can replace this with /predictions/raw, the only query parameter that isn't shared is aggregations.
   "https://data.climate.umt.edu/streamflow-api/predictions/",
   query = list(
-    date_start="1982-01-01",
-    date_end="2025-07-01",
+    date_start="2022-01-01",
+    date_end="2022-12-31",
     aggregations="mean", #These are all the options. If you don't specify, median is the default.
     as_csv=TRUE,
     locations = '1701021305',
