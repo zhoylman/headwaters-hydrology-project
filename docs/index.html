@@ -1099,7 +1099,7 @@
 
           const tooltip = L.DomUtil.create("div", "usgs-toggle-tooltip", container);
           tooltip.textContent =
-            "Overlays real-time USGS streamgage percentiles. When enabled, basin shading is faded to improve visibility.";
+            "Overlays real-time USGS streamgage percentiles representing observed streamflow, which may reflect water management such as dams and diversions. These are contrasted with HHP estimates, which represent relatively natural (reference) streamflow conditions. Basin shading is faded to improve visibility.";
 
           L.DomEvent.disableClickPropagation(container);
           L.DomEvent.disableScrollPropagation(container);
@@ -1403,7 +1403,7 @@
           // IMPORTANT: tooltip must be the NEXT sibling for your CSS: .btn:hover + .tooltip
           const tip = L.DomUtil.create("div", "usgs-toggle-tooltip", container);
           tip.textContent =
-            "Overlays real-time USGS streamgage percentiles. When enabled, basin shading is faded to improve visibility.";
+            "Overlays real-time USGS streamgage percentiles representing observed streamflow, which may reflect water management such as dams and diversions. These are contrasted with HHP estimates, which represent relatively natural (reference) streamflow conditions. Basin shading is faded to improve visibility.";
 
           L.DomEvent.disableClickPropagation(container);
           L.DomEvent.disableScrollPropagation(container);
