@@ -13,6 +13,7 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/flatgeobuf@3.20.0/dist/flatgeobuf-geojson.min.js"></script>
   <script src="https://unpkg.com/chroma-js@2.0.3/chroma.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-HQ69NXYP5S"></script>
   <script>
@@ -482,6 +483,7 @@
         display: none;
         /* comment this out if you want to keep it */
       }
+    }
   </style>
 </head>
 
@@ -818,9 +820,10 @@
     var currentOpacity = 0.8;
 
     function style(feature) {
-      var value = feature.properties.ft3_s_ecdf;
+      var value = feature.properties.pctile;
+      var fill = (value == null) ? '#cccccc' : scale(value).hex();   // grey for no-fit basins
       return {
-        fillColor: scale(value).hex(),
+        fillColor: fill,
         weight: 0.25,
         opacity: 0.5,
         color: 'black',
@@ -828,7 +831,7 @@
       };
     }
 
-    function showSidebar(basin_id) {
+    function showSidebar(huc10, plotUrl) {
       const sidebar = document.getElementById('sidebar');
       const content = document.getElementById('sidebar-content');
       const title = document.getElementById('sidebar-title');
@@ -851,30 +854,36 @@
       }
 
       content.innerHTML = '';
-      title.textContent = 'Basin ID (HUC10): ' + basin_id;
+      title.textContent = 'Basin ID (HUC10): ' + huc10;
 
       const img = document.createElement('img');
-      img.src = `https://data.climate.umt.edu/share/operational-plots/current_climatology_plot_${basin_id}.png?cacheBust=${Date.now()}`;
+      img.src = `${plotUrl}?cacheBust=${Date.now()}`;
       img.alt = 'Current Climatology Plot';
       img.style.width = '100%';
       img.style.height = 'auto';
       img.style.maxWidth = '100%';
+      img.onerror = function () {
+        content.innerHTML = '<p style="padding:20px;text-align:center;color:#666;">No plot available for this basin.</p>';
+      };
 
       content.appendChild(img);
     }
 
     function onEachFeature(feature, layer) {
-      if (feature.properties && feature.properties.basin_id) {
+      const props = feature.properties || {};
+      if (props.huc10) {
         layer.on('click', function () {
-          showSidebar(feature.properties.basin_id);
+          showSidebar(props.huc10, props.plotUrl);
         });
       }
-      if (feature.properties && feature.properties.basin_name && typeof feature.properties.ft3_s_ecdf === 'number') {
-        const name = feature.properties.basin_name;
-        const v = feature.properties.ft3_s_ecdf;   // 0..1
+      if (props.name) {
+        const name = props.name;
+        const v = props.pctile;   // 0..1 or null
         let tooltipContent;
 
-        if (v <= 0) {
+        if (v == null) {
+          tooltipContent = `${name}: no reliable fit`;
+        } else if (v <= 0) {
           tooltipContent = `${name}: Daily 30-year Minimum`;
         } else if (v >= 1) {
           tooltipContent = `${name}: Daily 30-year Maximum`;
@@ -897,38 +906,57 @@
       document.getElementById('sidebar').style.display = 'none';
     });
 
-    // Put this ABOVE the fetch()
-    const excludedBasins = [
-      "Great Salt Lake",
-      "Pyramid Lake",
-      "Walker Lake",
-      "Mono Lake",
-      "Carson Sink",
-      "Humboldt Sink",
-      "Summer Lake",
-      "Abert Lake",
-      "Goose Lake",
-      "Devils Lake",
-      "Medicine Lake",
-      "Great Divide Basin"
-    ];
+    // HHP KGML v2 data location (test bucket — change this one line when promoted).
+    const BASE = "https://data.climate.umt.edu/share/hhp_v2_test/hhp-kgml-test";
 
-    // Load basin GeoJSON layer
-    fetch('https://data.climate.umt.edu/share/current_flow_percentile.geojson')
-      .then(response => response.json())
-      .then(data => {
-        // Exclude primarily-lake/closed basins by name (case-insensitive substring match)
-        const filteredFeatures = data.features.filter(feature => {
-          const name = feature.properties?.basin_name?.trim();
-          return !excludedBasins.includes(name);
-        });
+    // Derive a single 0–1 display percentile from a KGML record:
+    // empirical normally; Stagge when q_mm_d <= 0 (empirical degenerates in zero-flow
+    // regimes); fall back to whichever is non-null. Returns null → grey (no reliable fit).
+    function hybridPercentile(rec) {
+      const q = rec.q_mm_d;
+      let src = (q != null && q <= 0) ? rec.stagge_percentile : rec.empirical_percentile;
+      if (src == null || isNaN(src)) {
+        src = (src === rec.stagge_percentile) ? rec.empirical_percentile : rec.stagge_percentile;
+      }
+      return (src == null || isNaN(src)) ? null : src / 100;
+    }
 
-        const filteredGeoJSON = {
-          type: "FeatureCollection",
-          features: filteredFeatures
-        };
+    // Load KGML basemap (TopoJSON) + daily percentiles, join on huc10.
+    Promise.all([
+      fetch(`${BASE}/huc10-basemap.topojson`).then(r => r.json()),
+      fetch(`${BASE}/huc10-current-percentiles_latest.json`).then(r => r.json())
+    ])
+      .then(([topo, recs]) => {
+        const records = recs.records || {};
 
-        geoJsonLayer = L.geoJson(filteredGeoJSON, {
+        // Title comes from the percentile record set's target_date.
+        const td = recs.target_date ? recs.target_date.trim() : '';
+        if (td) {
+          document.title = 'Current Streamflow Percentiles - ' + td;
+          const floatingTitle = document.getElementById('floating-title');
+          if (floatingTitle) {
+            floatingTitle.textContent = 'Current Streamflow Percentiles (' + td + ')';
+          }
+        }
+
+        // Decode TopoJSON → GeoJSON.
+        const fc = topojson.feature(topo, topo.objects.huc10_conus_simplified);
+
+        // Join percentile records onto geometry; drop too_few and unmatched basins.
+        const features = [];
+        for (const f of fc.features) {
+          const huc10 = f.properties.huc10;
+          const rec = records[huc10];
+          if (!rec || rec.fit_status === 'too_few') continue;
+          f.properties = Object.assign({}, f.properties, rec);
+          // fit_failed basins keep a valid empirical_percentile but have no reliable fit —
+          // render them grey rather than coloring by an untrustworthy percentile.
+          f.properties.pctile = (rec.fit_status === 'fit_failed') ? null : hybridPercentile(rec);
+          f.properties.plotUrl = `${BASE}/plots/huc10/huc4=${huc10.slice(0, 4)}/huc10-${huc10}.png`;
+          features.push(f);
+        }
+
+        geoJsonLayer = L.geoJson({ type: "FeatureCollection", features: features }, {
           style: style,
           onEachFeature: onEachFeature
         }).addTo(map);
@@ -938,7 +966,7 @@
           document.getElementById("loading-spinner").style.display = "none";
         }
       })
-      .catch(err => console.error('Error loading GeoJSON:', err));
+      .catch(err => console.error('Error loading KGML data:', err));
 
     // Create a dedicated pane for the states layer
     map.createPane('statesPane');
@@ -963,18 +991,6 @@
         console.log('States layer loaded successfully.');
       })
       .catch(error => console.error('Error loading states GeoJSON:', error));
-
-    // Fetch time text to update floating title and document title
-    fetch('https://data.climate.umt.edu/share/current_flow_percentile_time.txt')
-      .then(response => response.text())
-      .then(timeText => {
-        document.title = 'Current Streamflow Percentiles - ' + timeText.trim();
-        var floatingTitle = document.getElementById('floating-title');
-        if (floatingTitle) {
-          floatingTitle.textContent = 'Current Streamflow Percentiles (' + timeText.trim() + ')';
-        }
-      })
-      .catch(error => console.error('Error fetching time text:', error));
 
     // Set up slider container: disable propagation
     const sliderContainer = document.getElementById('slider-container');
@@ -1087,68 +1103,6 @@
         sidebar.style.right = 'auto';
       });
 
-      const UsgsToggleControl = L.Control.extend({
-        options: { position: "topleft" },
-        onAdd: function () {
-          const container = L.DomUtil.create("div", "usgs-toggle leaflet-bar");
-          container.style.position = "relative";
-
-          const btn = L.DomUtil.create("button", "usgs-toggle-btn", container);
-          btn.type = "button";
-          btn.innerHTML = `<i class="fa-solid fa-gauge-high"></i><span>Add Current USGS Percentiles</span>`;
-
-          const tooltip = L.DomUtil.create("div", "usgs-toggle-tooltip", container);
-          tooltip.textContent =
-            "Overlays real-time USGS streamgage percentiles representing observed streamflow, which may reflect water management such as dams and diversions. These are contrasted with HHP estimates, which represent relatively natural (reference) streamflow conditions. Basin shading is faded to improve visibility.";
-
-          L.DomEvent.disableClickPropagation(container);
-          L.DomEvent.disableScrollPropagation(container);
-
-          btn.addEventListener("click", async function () {
-            const isOn = (usgsLayer && map.hasLayer(usgsLayer));
-
-            if (isOn) {
-              map.removeLayer(usgsLayer);
-              btn.innerHTML = `<i class="fa-solid fa-gauge-high"></i><span>Add Current USGS Percentiles</span>`;
-              btn.classList.remove("is-on");
-              if (savedHhpOpacity !== null) {
-                setHhpOpacity(savedHhpOpacity);
-                savedHhpOpacity = null;
-              }
-              return;
-            }
-
-            if (savedHhpOpacity === null) savedHhpOpacity = getCurrentSliderOpacity();
-            setHhpOpacity(0.40);
-
-            if (!usgsLoaded) {
-              try {
-                showLoader("Loading USGS Percentiles");
-                const resp = await fetch(
-                  "https://data.climate.umt.edu/share/operational-usgs/usgs_current_percentiles.geojson"
-                );
-                const gj = await resp.json();
-                usgsLayer = makeUsgsLayer(gj);
-                usgsLoaded = true;
-              } catch (e) {
-                alert("Failed to load USGS percentiles");
-                if (savedHhpOpacity !== null) setHhpOpacity(savedHhpOpacity);
-                return;
-              } finally {
-                hideLoader();
-              }
-            }
-
-            usgsLayer.addTo(map);
-            btn.innerHTML = `<i class="fa-solid fa-gauge-high"></i><span>Remove Current USGS Percentiles</span>`;
-            btn.classList.add("is-on");
-          });
-
-          return container;
-        }
-      });
-
-
       document.addEventListener('touchmove', function (e) {
         if (isDragging) {
           var touch = e.touches[0];
@@ -1160,110 +1114,6 @@
       document.addEventListener('touchend', function () {
         isDragging = false;
       });
-    })();
-  </script>
-  <script>
-    (function () {
-      const sidebar = document.getElementById('sidebar');
-      const resizer = sidebar.querySelector('.sidebar-resizer');
-      let isResizing = false;
-      let startX, startY, initialWidth, initialHeight, aspectRatio;
-
-      resizer.addEventListener('mousedown', function (e) {
-        isResizing = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        initialWidth = sidebar.offsetWidth;
-        initialHeight = sidebar.offsetHeight;
-        aspectRatio = initialWidth / initialHeight;
-
-        // 👇 Disable text selection during resize
-        document.body.classList.add('no-select');
-        document.addEventListener('mousemove', resizeSidebar);
-        document.addEventListener('mouseup', stopResize);
-        document.body.style.cursor = 'se-resize';
-      });
-
-      function resizeSidebar(e) {
-        if (!isResizing) return;
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-
-        let newWidth = initialWidth + deltaX;
-        let newHeight = initialHeight + deltaY;
-
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-          newHeight = newWidth / aspectRatio;
-        } else {
-          newWidth = newHeight * aspectRatio;
-        }
-
-        const maxWidth = 0.7 * window.innerWidth;
-        const maxHeight = 0.7 * window.innerHeight;
-        newWidth = Math.min(Math.max(newWidth, 400), maxWidth);
-        newHeight = Math.min(Math.max(newHeight, 400), maxHeight);
-
-        sidebar.style.width = `${newWidth}px`;
-        sidebar.style.height = `${newHeight}px`;
-      }
-
-      function stopResize() {
-        isResizing = false;
-        document.removeEventListener('mousemove', resizeSidebar);
-        document.removeEventListener('mouseup', stopResize);
-
-        // 👇 Re-enable text selection
-        document.body.classList.remove('no-select');
-        document.body.style.cursor = 'default';
-      }
-      window.addEventListener('resize', () => {
-        map.invalidateSize();
-      });
-      window.addEventListener('orientationchange', () => {
-        setTimeout(() => map.invalidateSize(), 250);
-      });
-      document.getElementById('info-popup').addEventListener('touchmove', function (e) {
-        e.stopPropagation();
-      }, { passive: true });
-      var isMobile = window.innerWidth < 768;
-      map.fitBounds(conusBounds, {
-        padding: isMobile ? [8, 8] : [30, 30],
-        maxZoom: isMobile ? 5 : 6,
-        animate: false
-      });
-      // ---------------------------
-      // USGS percentiles toggle layer
-      // ---------------------------
-      let usgsLayer = null;
-      let usgsLoaded = false;
-
-      function makeUsgsLayer(geojson) {
-        return L.geoJson(geojson, {
-          pointToLayer: function (feature, latlng) {
-            const c = feature?.properties?.fillColor || "#000000";
-            return L.circleMarker(latlng, {
-              radius: 4.5,
-              fillColor: c,
-              color: "black",
-              weight: 0.8,
-              opacity: 1,
-              fillOpacity: 0.9
-            });
-          },
-          onEachFeature: function (feature, layer) {
-            const p = feature.properties || {};
-            const name = p.STANAME || "USGS gage";
-            const staid = p.STAID || "";
-            const val = (typeof p.value === "number") ? `${p.value}%` : (p.value ?? "");
-            layer.bindTooltip(`${name}${staid ? " (" + staid + ")" : ""}: ${val}`, {
-              direction: "auto",
-              sticky: true
-            });
-          }
-        });
-      }
-
-
     })();
   </script>
   <script>
